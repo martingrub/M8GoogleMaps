@@ -15,6 +15,9 @@ import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.example.m8googlemaps.model.ApiCall;
+
+import com.example.m8googlemaps.model.ModelApi;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -26,6 +29,12 @@ import com.example.m8googlemaps.databinding.ActivityMapsBinding;
 
 import java.util.List;
 import java.util.Locale;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
@@ -44,20 +53,57 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+        /*Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("https://api.sunrise-sunset.org/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        ApiCall apiCall = (ApiCall) retrofit.create(ApiCall.class);
+        Call<ModelApi> call = apiCall.getData("41.390205", "2.154007");*/
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("https://www.flickr.com/services/rest/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        ApiCall apiCall = (ApiCall) retrofit.create(ApiCall.class);
+        Call<ModelApi> call = apiCall.getPhotos();
+        call.enqueue(new Callback<ModelApi>(){
+            @Override
+            public void onResponse(Call<ModelApi> call, Response<ModelApi> response) {
+                if(response.code()!=200){
+                    Log.i("testApi", "checkConnection");
+                    return;
+                }
+
+                Log.i("testApi", response.body().getStat() + " - " + response.body().getPhotos().getPhoto());
+            }
+
+            @Override
+            public void onFailure(Call<ModelApi> call, Throwable t) {
+
+            }
+        });
+
     }
 
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
+
         mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
                 // Add a marker in Sydney and move the camera
+
                 mMap.addMarker(new MarkerOptions().position(latLng).title("New position"));
                 mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
                 Log.i("hola", latLng.latitude+" "+latLng.longitude);
                 getAddress(latLng.latitude,latLng.longitude);
+                double Latitude = latLng.latitude;
+                double Longitude = latLng.longitude;
+                ApiThread process = new ApiThread(Latitude,Longitude);
+                process.execute();
+
             }
         });
         mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
@@ -69,6 +115,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         });
         enableMyLocation();
+
+
+
 
     }
     private void enableMyLocation() {
@@ -111,6 +160,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         catch(Exception e){
             Toast.makeText(this, "No Location Name Found", Toast.LENGTH_LONG).show();
         }
+
     }
 
 
